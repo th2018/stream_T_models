@@ -1,0 +1,112 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+https://www.lobdata.com.br/2020/09/15/how-to-perform-correlation-analysis-in-time-series-data-using-r/
+
+```{r}
+#  install.packages("feasts")
+library(feasts)
+library(tsibble)
+library(lubridate)
+
+#  install.packages("TSstudio")
+library(TSstudio)
+library(plotly)
+
+# third approach
+library(tidyverse)
+library(timetk)
+library(lubridate)
+```
+
+```{r}
+air_water<- read.csv("C:/Users/taohuang/Downloads/ThermalMetrics_NWIS.csv")
+air_water$date<-as.POSIXct(air_water$date, format="%Y-%m-%d")
+air_water
+```
+
+```{r}
+air_water_12413370<-air_water[air_water$site_id==12413370,]
+air_water_12413370_summer<-air_water_12413370[month(air_water_12413370$date)%in% c(6,7,8),]
+plot(air_water_12413370_summer$tavg_air_C, air_water_12413370_summer$tavg_wat_C )
+plot(air_water_12413370_summer$date, air_water_12413370_summer$tavg_air_C )
+plot(air_water_12413370_summer$date, air_water_12413370_summer$tavg_wat_C)
+```
+
+```{r}
+
+air_water_12413370_summer_2019<-air_water_12413370_summer[year(air_water_12413370_summer$date)==2019,]
+
+# ts function is responsible to convert to ts object
+
+ts <- ts(data = air_water_12413370_summer_2019[, c("tavg_wat_C","tavg_air_C")], # selecting 2 variables
+   start = 1,
+   end = 92,
+   frequency = 1)
+ts
+```
+
+```{r}
+ts_plot( ts,
+        title = " ",
+        Ytitle = " ",
+        Xtitle = " ")
+
+```
+
+```{r}
+par(mfrow = c(1, 2))
+# acf R time series
+# c("tavg_wat_C","tavg_air_C")
+ts[, c("tavg_wat_C")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - tavg_wat_C")
+
+# pacf R time series
+
+ts[, c("tavg_wat_C")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - tavg_wat_C")
+```
+
+
+```{r}
+par(mfrow = c(1, 2))
+# acf R time series
+# c("tavg_wat_C","tavg_air_C")
+ts[, c("tavg_air_C")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - tavg_air_C")
+
+# pacf R time series
+
+ts[, c("tavg_air_C")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - tavg_air_C")
+```
+
+```{r}
+ts_lags( ts,
+        lags = c(1, 2, 3, 4, 5, 6, 7)) %>% # choosing what lags to plot
+  layout(title = "Series vs Lags")
+```
+
+```{r}
+# ccf time series
+par(mfrow=c(1,1))
+ccf( ts[, c( "tavg_wat_C")],  ts[, c( "tavg_air_C")], 
+    lag.max = 7,
+    main = "Cros-Correlation Plot",
+    ylab = "CCF")
+
+# ccf time series
+par(mfrow=c(1,1))
+ccf( ts[, c( "tavg_air_C")],  ts[, c( "tavg_wat_C")], 
+    lag.max = 7,
+    main = "Cros-Correlation Plot",
+    ylab = "CCF")
+
+```
+
