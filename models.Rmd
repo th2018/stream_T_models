@@ -8,6 +8,7 @@ output:
 ---
 
 ```{r}
+library("dplyr")
 #install.packages('corrplot')
 library(corrplot)
 library(RColorBrewer)
@@ -25,7 +26,6 @@ library("pROC")
 library("e1071")
 library( "MASS" )    #    used to generate correlated variables
 library("sp")
-library("dplyr")
 library("Hmisc")    #   used for graphing se bars
 #install.packages("randomForest")
 require("randomForest")
@@ -129,3 +129,17 @@ x=seq(1,30)
 plot(x,x,type="l",xlim= xlim ,ylim= xlim,xlab="",ylab="")
 ```
 
+```{r}
+model_gbm %>%
+  partial(pred.var =  "max_AirTemperature_C"   , n.trees = model_gbm$n.trees, grid.resolution = 100) %>%
+  autoplot(rug = TRUE, train = train)+theme(axis.text=element_text(size=21),
+        axis.title=element_text(size=24))
+
+#,"min_Discharge"
+
+model_gbm %>%
+  partial(pred.var =  "min_Discharge"   , n.trees = model_gbm$n.trees, grid.resolution = 100) %>%
+  autoplot(rug = TRUE, train = train)+theme(axis.text=element_text(size=21),
+        axis.title=element_text(size=24))
+
+```
