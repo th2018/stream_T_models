@@ -7,7 +7,7 @@ output:
   html_document: default
 ---
 
-This .RMD downloads stream T and Q from the Bogus South Gage; Weather Station Data from Bogus Ridge
+This .RMD downloads stream T and Q from the Bogus South Gage; Weather Station Data from Bogus Ridge.
 
 # The 'tidyverse' is a set of packages.
 ```{r, hide=T, results='hide'}
@@ -35,7 +35,9 @@ download.file(url, destfile)
 ```{r}
 df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"), Discharge=0, StreamTemp=0, StreamEC=as.factor(0))
 
-for (year in yr) {
+yr=c(2006:2012,2014:2017, 2019:2020)      #2013 and 2018 year in %y not %Y
+
+for (year in yr) { 
 destfile=paste(site,"_StreamHrlySummary_",year,".csv",sep="")
 f<-read.csv(destfile)
 f2<-f[c(18:dim(f)[1]),c(1:4)]
@@ -47,16 +49,28 @@ f2$DateTime
 f2$`Discharge-L/s`<-as.numeric(as.character(f2$`Discharge-L/s`))
 f2$`StreamTemp-C` <-as.numeric(as.character(f2$`StreamTemp-C`))
 colnames(f2)<-c("DateTime" ,  "Discharge" , "StreamTemp", "StreamEC")
+
+#if ( min(as.numeric(format( f2$DateTime,"%Y")), na.rm=T) <2000         )
+#{print(year)}
+
 df<-rbind(f2,df)
 }
 
 head(df)
 df2<-df[!df$StreamTemp<=-6999 & !df$Discharge <=-6999 & !is.na(df$DateTime) ,]
-save(df2,file=paste(site,"df2.Rdata",sep="_"))
+summary(df2)
 ```
 
+
 ```{r}
-#load( paste(site,"df2.Rdata",sep="_"))
+df3<-df2[df2$DateTime>=as.Date("2000-01-01",format="%Y-%m-%d"),]
+save( df3  ,file=paste(site,"df3.Rdata",sep="_"))
+```
+
+
+```{r}
+#site="BSG"
+#load( paste(site,"df3.Rdata",sep="_"))
 ```
 
 Meteorological Variables
@@ -77,6 +91,8 @@ download.file(url, destfile)
 ```{r}
 met_df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"),Precipitation_mm=0,         AirTemperature_C =0, SolarRadiation =0,NetRadiation =0,RelativeHumidity_percent=0,WindDirection_degree=0,WindSpeed =0, SnowDepth_cm    =0 )
 
+yr=c(2011:2018,2020)
+
 for (year in yr) {
 destfile=paste(site,"_HrlySummary_",year,".csv",sep="")
 r<-read.csv(destfile, header=F)
@@ -86,6 +102,13 @@ r2<-r2[-1,]
 head(r2)
 r2$DateTime<-as.POSIXct(r2$DateTime , format="%m/%d/%Y %H:%M")
 colnames(r2)<-c( "DateTime" ,"Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm" )
+
+air_summary<-summary((as.numeric(  r2$AirTemperature_C  ) ))
+# 
+# if (  air_summary[2] < -100         )
+# {print(year)}
+
+
 met_df<-rbind(r2,met_df)
 }
 
@@ -93,19 +116,21 @@ head(met_df)
 summary(met_df)
 ```
 
+
 ```{r}
 met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")]  <- sapply( met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")] ,as.numeric)
 summary(met_df)
 ```
 
 ```{r}
-met_df2 <-met_df[!met_df$AirTemperature_C <= - 45  & !met_df$SolarRadiation       <=-6999 & !is.na(met_df$DateTime) ,]
+met_df2 <-met_df[!met_df$AirTemperature_C <= -100 &   !met_df$SolarRadiation       <=-6999 & !is.na(met_df$DateTime) ,]
 summary(met_df2)
 save(met_df2,file="met_df2.Rdata")
 ```
 
 # daily
 ```{r}
+df2<-df3
 df2$date<-as.Date(df2$DateTime)
 met_df2$date<-as.Date(met_df2$DateTime)
 daily<-merge(df2 ,met_df2 ,by="date")
@@ -121,7 +146,17 @@ summarize(min_Discharge = min(Discharge) , median_Discharge = median( Discharge)
 daily_df<-daily_df[daily_df$min_Discharge>0,]
 
 daily_df_summer<-daily_df[    months( daily_df$date ) %in% c("June","July","August")   ,]
+summary(daily_df_summer)
+save(daily_df_summer, file="daily_df_summer.Rdata")
 ```
+
+
+
+
+
+
+
+
 
 
 ```{r}
