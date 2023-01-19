@@ -1,0 +1,68 @@
+---
+title: "models"
+author: "Tao"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+#install.packages('corrplot')
+library(corrplot)
+library(RColorBrewer)
+# install.packages("gbm")
+library("gbm")
+# install.packages("caret")
+library("caret")
+#install.packages("pdp")
+library("pdp")          # model visualization
+library("ggplot2")      # model visualization
+#install.packages("lime")
+library("lime")         # model visualization
+library("pROC")
+#install.packages("e1071", repos="http://R-Forge.R-project.org")
+library("e1071")
+library( "MASS" )    #    used to generate correlated variables
+library("sp")
+library("dplyr")
+library("Hmisc")    #   used for graphing se bars
+#install.packages("randomForest")
+require("randomForest")
+#install.packages("e1071")
+library(e1071)
+library(caret)
+library("ModelMetrics")
+library("foreign")
+#install.packages("rfUtilities")
+library("rfUtilities")
+```
+
+# Load data
+```{r}
+load("daily_df_summer.Rdata")
+```
+
+```{r}
+M <-cor(daily_df_summer[,c(2:13)])
+corrplot(M, type="upper", order="hclust",
+         col=brewer.pal(n=8, name="RdYlBu"))
+#stream T, Air T, DISCHARGE
+```
+
+```{r}
+hist(daily_df_summer$max_StreamTemp)
+
+hist(log(daily_df_summer$min_Discharge))
+
+hist(daily_df_summer$max_SolarRadiation)
+
+```
+
+
+```{r}
+summary(lm(daily_df_summer$max_StreamTemp~ daily_df_summer$min_Discharge + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation ) )
+summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation ) )
+summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C   ) )
+```
+
