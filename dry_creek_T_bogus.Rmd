@@ -7,19 +7,23 @@ output:
   html_document: default
 ---
 
+This .RMD downloads stream T and Q from the Bogus South Gage; Weather Station Data from Bogus Ridge
+
 # The 'tidyverse' is a set of packages.
 ```{r, hide=T, results='hide'}
 # install.packages("tidyverse")
 library("tidyverse")
-library(lubridate)
+library("lubridate")
+library("dplyr")
 getwd()
 ```
 
 https://www.boisestate.edu/drycreek/dry-creek-data/bogus-south/#historical-data
+2006-2020
 
 # Download data for multiple years (Bogus South Gage)
 ```{r , hide=T, results='hide' }
-yr=c(2007:2020)
+yr=c(2006:2020)
 site="BSG"
 for (year in yr) {
 url=paste("https://icewater.boisestate.edu/boisefront-products/historical/dcew_bsg/StreamHourlyData/",site,"_StreamHrlySummary_",year,".csv",sep="")
@@ -33,17 +37,11 @@ df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"), Discharge=0, StreamTe
 
 for (year in yr) {
 destfile=paste(site,"_StreamHrlySummary_",year,".csv",sep="")
-
-
 f<-read.csv(destfile)
 f2<-f[c(18:dim(f)[1]),c(1:4)]
 f2[1,]
 colnames(f2 )<-unlist(f2[1,])
-
-
 f2<-f2[-1,]
-
-
 f2$DateTime<-as.POSIXct(f2$DateTime, format="%m/%d/%Y %H:%M")
 f2$DateTime
 f2$`Discharge-L/s`<-as.numeric(as.character(f2$`Discharge-L/s`))
@@ -54,18 +52,104 @@ df<-rbind(f2,df)
 
 head(df)
 df2<-df[!df$StreamTemp<=-6999 & !df$Discharge <=-6999 & !is.na(df$DateTime) ,]
-#save(df2,file=paste(site,"df2.Rdata",sep="_"))
-
+save(df2,file=paste(site,"df2.Rdata",sep="_"))
 ```
 
 ```{r}
 #load( paste(site,"df2.Rdata",sep="_"))
+```
 
+Meteorological Variables
+2011-2020
+https://www.boisestate.edu/drycreek/dry-creek-data/bogus-ridge/#historical-data
+
+```{r}
+yr=c(2011:2020)
+site="BRW"
+for (year in yr) {
+url=paste("https://icewater.boisestate.edu/boisefront-products/historical/dcew_br/Weather/Hourly%20Summary%20Data/",site,"_HrlySummary_",year,".csv",sep="")
+destfile=paste(site,"_HrlySummary_",year,".csv",sep="")
+download.file(url, destfile)
+}
 ```
 
 
 ```{r}
+met_df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"),Precipitation_mm=0,         AirTemperature_C =0, SolarRadiation =0,NetRadiation =0,RelativeHumidity_percent=0,WindDirection_degree=0,WindSpeed =0, SnowDepth_cm    =0 )
 
+for (year in yr) {
+destfile=paste(site,"_HrlySummary_",year,".csv",sep="")
+r<-read.csv(destfile, header=F)
+r2<-r[c(20:dim(r)[1]),c(1:9)]
+colnames(r2)<-r2[1,]
+r2<-r2[-1,]
+head(r2)
+r2$DateTime<-as.POSIXct(r2$DateTime , format="%m/%d/%Y %H:%M")
+colnames(r2)<-c( "DateTime" ,"Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm" )
+met_df<-rbind(r2,met_df)
+}
+
+head(met_df)
+summary(met_df)
+```
+
+```{r}
+met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")]  <- sapply( met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")] ,as.numeric)
+summary(met_df)
+```
+
+```{r}
+met_df2 <-met_df[!met_df$AirTemperature_C <= - 45  & !met_df$SolarRadiation       <=-6999 & !is.na(met_df$DateTime) ,]
+summary(met_df2)
+save(met_df2,file="met_df2.Rdata")
+```
+
+# daily
+```{r}
+df2$date<-as.Date(df2$DateTime)
+met_df2$date<-as.Date(met_df2$DateTime)
+daily<-merge(df2 ,met_df2 ,by="date")
+
+daily_df <- daily %>%                            
+group_by(date) %>%
+summarize(min_Discharge = min(Discharge) , median_Discharge = median( Discharge) ,   max_Discharge = max( Discharge),
+          min_StreamTemp = min(StreamTemp) , median_StreamTemp = median(StreamTemp) ,   max_StreamTemp = max(StreamTemp),
+          min_AirTemperature_C = min(AirTemperature_C) , median_AirTemperature_C = median(AirTemperature_C) ,   max_AirTemperature_C = max(AirTemperature_C),
+          min_SolarRadiation = min(SolarRadiation) , median_SolarRadiation = median(SolarRadiation) ,   max_SolarRadiation = max(SolarRadiation)
+          )
+
+daily_df<-daily_df[daily_df$min_Discharge>0,]
+
+daily_df_summer<-daily_df[    months( daily_df$date ) %in% c("June","July","August")   ,]
+```
+
+
+```{r}
+summary( lm(daily_df_summer$max_StreamTemp ~ log(daily_df_summer$max_Discharge ) +    (daily_df_summer $max_AirTemperature_C ) + daily_df_summer$max_SolarRadiation) )
+```
+
+
+```{r}
+daily_df_summer_2020<-daily_df_summer[daily_df_summer$date>=as.Date("2020-01-01",format="%Y-%m-%d"),]
+daily_df_summer_2020
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_SolarRadiation)
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_Discharge)
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_StreamTemp)
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_AirTemperature_C )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
 df2_summer<-df2[ months( df2$DateTime) %in% c( "June","July","August" ) ,]
 df2_summer_2020<-df2_summer[ df2_summer$DateTime>=as.Date("2020-01-01",format="%Y-%m-%d") ,]
 df2_summer_2020
@@ -82,7 +166,6 @@ hist( df2_summer$StreamTemp)
 ```
 
 
-https://www.boisestate.edu/drycreek/dry-creek-data/bogus-ridge/#historical-data
 
 ```{r}
 yr=c(2012:2019)
@@ -176,8 +259,6 @@ summarize(min_Discharge = min(Discharge) , median_Discharge = median( Discharge)
 daily_df<-daily_df[daily_df$min_Discharge>0,]
 
 daily_df_summer<-daily_df[    months( daily_df$date ) %in% c("June","July","August")   ,]
-
-
 ```
 
 ```{r}
