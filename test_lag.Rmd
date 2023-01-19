@@ -1,0 +1,95 @@
+---
+title: "TEST_LAG"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+https://www.lobdata.com.br/2020/09/15/how-to-perform-correlation-analysis-in-time-series-data-using-r/
+
+```{r}
+# install.packages("feasts")
+library(feasts)
+library(tsibble)
+library(lubridate)
+
+#  install.packages("TSstudio")
+library(TSstudio)
+library(plotly)
+
+# third approach
+library(tidyverse)
+library(timetk)
+library(lubridate)
+```
+
+```{r}
+df<-data.frame(air=c(1,4,6,9,
+                     21,19,16,14,
+                     11,6), water=c(4,1,4,6
+                                  ,9,21,19,16,
+                                  14,11))
+df
+plot(df$air)
+plot(df$water)
+```
+
+```{r}
+ts <- ts(data = 
+           df,
+   start = 1,
+   end = 8,
+   frequency = 1)
+ts
+```
+
+```{r}
+par(mfrow = c(1, 2))
+
+
+ts[, c("water")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - tavg_wat_C")
+
+
+ts[, c("water")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - tavg_wat_C")
+```
+
+```{r}
+par(mfrow = c(1, 2))
+
+ts[, c("air")] %>% 
+  acf(lag.max = 300, 
+      main = "Autocorrelation Plot - tavg_wat_C")
+
+ts[, c("air")] %>%
+  pacf(lag.max = 300,
+       main = "Partial Autocorrelation Plot - tavg_wat_C")
+```
+
+
+```{r}
+ts_lags( ts,
+        lags = c(1, 2   ))
+        
+```
+
+```{r}
+# ccf time series
+par(mfrow=c(1,1))
+ccf( ts[, c( "water")],  ts[, c( "air")], 
+    lag.max = 7,
+    main = "Cros-Correlation Plot",
+    ylab = "CCF")
+
+# ccf time series, air is one day before (-1 day lag)
+par(mfrow=c(1,1))
+ccf( ts[, c( "air")],  ts[, c( "water")], 
+    lag.max = 7,
+    main = "Cros-Correlation Plot",
+    ylab = "CCF")
+```
+
+
