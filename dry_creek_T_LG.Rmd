@@ -33,17 +33,6 @@ download.file(url, destfile)
 }
 ```
 
-
-
-
-
-
-
-
-
-
-
-
 ```{r}
 df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"), Discharge=0, StreamTemp=0, StreamEC=as.factor(0))
 
@@ -54,26 +43,33 @@ f<-read.csv(destfile)
 f2<-f[c(18:dim(f)[1]),c(1:4)]
 f2[1,]
 colnames(f2 )<-unlist(f2[1,])
-#colnames(f2 )<-as.character(f2[1,])
 f2<-f2[-1,]
-#f2$DateTime<-as.character(f2$DateTime)
 f2$DateTime<-as.POSIXct(f2$DateTime, format="%m/%d/%Y %H:%M")
-f2$DateTime
 f2$`Discharge-L/s`<-as.numeric(as.character(f2$`Discharge-L/s`))
 f2$`StreamTemp-C` <-as.numeric(as.character(f2$`StreamTemp-C`))
 colnames(f2)<-c("DateTime" ,  "Discharge" , "StreamTemp", "StreamEC")
 df<-rbind(f2,df)
 }
 
-head(df)
 df2<-df[!df$StreamTemp<=-6999 & !df$Discharge <=-6999 & !is.na(df$DateTime) ,]
-#save(df2,file="df2.Rdata")
+head(df2)
+summary(df2)
 ```
 
 ```{r}
-#load("df2.Rdata")
-
+# some years are in %y not %Y
+save( df2  ,file=paste(site,"df2.Rdata",sep="_"))
+print(paste(site,"df2.Rdata",sep="_"))
 ```
+
+
+
+
+
+
+
+
+
 
 
 ```{r}
