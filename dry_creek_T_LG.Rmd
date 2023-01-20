@@ -1,0 +1,232 @@
+---
+title: "Dry_Creek_T"
+author: "Tao Huang"
+date:  "`r  Sys.time() `"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This .RMD downloads stream T and Q from Lower Gauge.
+
+# The 'tidyverse' is a set of packages.
+```{r, hide=T, results='hide'}
+# install.packages("tidyverse")
+library("tidyverse")
+library("lubridate")
+library("dplyr")
+getwd()
+```
+
+https://www.boisestate.edu/drycreek/dry-creek-data/lower-gauge/#historical-data
+1999-2021
+
+# Download data for multiple years (Lower Gauge)
+```{r , hide=T, results='hide' }
+yr=c(1999:2021)
+site="LG"
+
+for (year in yr) {
+url=paste("https://icewater.boisestate.edu/boisefront-products/historical/dcew_lg/StreamHourlyData/",site,"_StreamHrlySummary_",year,".csv",sep="")
+destfile=paste("LG_StreamHrlySummary_",year,".csv",sep="")
+download.file(url, destfile)
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"), Discharge=0, StreamTemp=0, StreamEC=as.factor(0))
+
+for (year in yr) {
+destfile=paste("LG_StreamHrlySummary_",year,".csv",sep="")
+#read data
+f<-read.csv(destfile)
+f2<-f[c(18:dim(f)[1]),c(1:4)]
+f2[1,]
+colnames(f2 )<-unlist(f2[1,])
+#colnames(f2 )<-as.character(f2[1,])
+f2<-f2[-1,]
+#f2$DateTime<-as.character(f2$DateTime)
+f2$DateTime<-as.POSIXct(f2$DateTime, format="%m/%d/%Y %H:%M")
+f2$DateTime
+f2$`Discharge-L/s`<-as.numeric(as.character(f2$`Discharge-L/s`))
+f2$`StreamTemp-C` <-as.numeric(as.character(f2$`StreamTemp-C`))
+colnames(f2)<-c("DateTime" ,  "Discharge" , "StreamTemp", "StreamEC")
+df<-rbind(f2,df)
+}
+
+head(df)
+df2<-df[!df$StreamTemp<=-6999 & !df$Discharge <=-6999 & !is.na(df$DateTime) ,]
+#save(df2,file="df2.Rdata")
+```
+
+```{r}
+#load("df2.Rdata")
+
+```
+
+
+```{r}
+df2_summer<-df2[ months( df2$DateTime) %in% c("June","July","August") ,]
+df2_summer_2021<-df2_summer[ df2_summer$DateTime>=as.Date("2021-01-01",format="%Y-%m-%d") ,]
+df2_summer_2021
+plot(df2_summer_2021$DateTime, log(df2_summer_2021$Discharge))
+plot(df2_summer_2021$DateTime,  df2_summer_2021$StreamTemp )
+```
+
+```{r}
+plot(df2$Discharge ,df2$StreamTemp)
+plot(log(df2_summer$Discharge) ,df2_summer$StreamTemp)
+plot(df2$DateTime,df2$StreamTemp)
+hist( log(df2_summer$Discharge) )
+hist( df2_summer$StreamTemp)
+```
+
+https://www.boisestate.edu/drycreek/dry-creek-data/lower-weather/#historical-data
+```{r}
+yr=c(2015:2020)
+for (year in yr) {
+url=paste("https://icewater.boisestate.edu/boisefront-products/historical/dcew_lw/Weather/4CompRadiation/LW_4CompRadHrlySummary_",year,".csv",sep="")
+destfile=paste("LW_4CompRadHrlySummary_",year,".csv",sep="")
+download.file(url, destfile)
+}
+```
+
+<!-- ```{r} -->
+<!-- getwd() -->
+<!-- list.files() -->
+<!-- destfile -->
+<!-- r<-read.csv(destfile, header=F) -->
+<!-- r2<-r[c(20:dim(r)[1]),c(1:6)] -->
+<!-- colnames(r2)<-r2[1,] -->
+<!-- r2<-r2[-1,] -->
+<!-- ``` -->
+
+```{r}
+rad_df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"), SWin=0, SWout=0, LWin=0, LWout=0, RadTemp=0)
+for (year in yr) {
+destfile=paste("LW_4CompRadHrlySummary_",year,".csv",sep="")
+
+r<-read.csv(destfile, header=F)
+r2<-r[c(20:dim(r)[1]),c(1:6)]
+colnames(r2)<-r2[1,]
+r2<-r2[-1,]
+r2$DateTime<-as.POSIXct(r2$DateTime , format="%m/%d/%Y %H:%M")
+colnames(r2)<-c("DateTime", "SWin" , "SWout" , "LWin" , "LWout" , "RadTemp")
+  
+rad_df<-rbind(r2,rad_df)
+}
+head(rad_df)
+summary(rad_df)
+```
+
+```{r}
+#rad_df %>%  mutate(across(c( "SWin" , "SWout" , "LWin" , "LWout" , "RadTemp"),  function(x) as.numeric(x)))
+
+rad_df[,c( "SWin" , "SWout" , "LWin" , "LWout" , "RadTemp")]  <- sapply( rad_df[,c( "SWin" , "SWout" , "LWin" , "LWout" , "RadTemp")] ,as.numeric)
+
+#rad_df %>% mutate_if(is.character,as.numeric)
+
+#rad_df %>% mutate_at(c( "SWin" , "SWout" , "LWin" , "LWout" , "RadTemp"), as.numeric)
+
+summary(rad_df)
+```
+
+```{r}
+rad_df2 <-rad_df[!rad_df$SWout        <=-6999 & !rad_df$SWin      <=-6999 & !is.na(rad_df$DateTime) ,]
+#save(rad_df2,file="rad_df2.Rdata")
+
+```
+
+```{r}
+load("rad_df2.Rdata")
+rad_df2_summer<-rad_df2[ months( rad_df2$DateTime) %in% c("June","July","August") ,]
+rad_df2_summer
+```
+
+```{r}
+plot(rad_df2_summer$DateTime, rad_df2_summer$RadTemp)
+
+plot(rad_df2_summer$SWin, rad_df2_summer$RadTemp)
+
+plot(rad_df2_summer$SWout , rad_df2_summer$RadTemp)
+
+plot(rad_df2_summer$LWout , rad_df2_summer$RadTemp)
+
+plot(rad_df2_summer$LWin  , rad_df2_summer$RadTemp)
+
+```
+
+# daily
+```{r}
+df2$date<-as.Date(df2$DateTime)
+rad_df2$date<-as.Date(rad_df2$DateTime)
+daily<-merge(df2 ,rad_df2 ,by="date")
+
+daily_df <- daily %>%                            
+group_by(date) %>%
+summarize(min_Discharge = min(Discharge) , median_Discharge = median( Discharge) ,   max_Discharge = max( Discharge),
+          min_StreamTemp = min(StreamTemp) , median_StreamTemp = median(StreamTemp) ,   max_StreamTemp = max(StreamTemp),
+          min_SWin = min(SWin) , median_SWin = median(SWin) ,   max_SWin = max(SWin),
+          min_SWout = min(SWout) , median_SWout = median(SWout) ,   max_SWout = max(SWout)
+          )
+
+daily_df<-daily_df[daily_df$min_Discharge>0,]
+
+daily_df_summer<-daily_df[    months( daily_df$date ) %in% c("June","July","August")   ,]
+
+
+```
+
+```{r}
+summary( lm(daily_df_summer$max_StreamTemp ~ log(daily_df_summer$max_Discharge ) +    (daily_df_summer$max_SWin ) ) )
+hist(log(daily_df_summer$max_SWin ))
+plot( daily_df_summer$min_Discharge, daily_df_summer$min_StreamTemp)
+
+plot( daily_df_summer$max_SWin, daily_df_summer$max_StreamTemp)
+```
+
+```{r}
+daily_df_summer_2020<-daily_df_summer[daily_df_summer$date>=as.Date("2020-01-01",format="%Y-%m-%d"),]
+daily_df_summer_2020
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_SWout)
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_SWin )
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_Discharge)
+plot(daily_df_summer_2020$date, daily_df_summer_2020$max_StreamTemp)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+summer<-merge(df2_summer,rad_df2_summer,by="DateTime")
+summer<-summer[summer$Discharge>0,]
+```
+
+```{r}
+summary( lm(summer$StreamTemp~ log(summer$Discharge) +  summer$SWin  ) )
+plot(summer$Discharge, summer$StreamTemp)
+plot(summer$SWin, summer$StreamTemp)
+```
