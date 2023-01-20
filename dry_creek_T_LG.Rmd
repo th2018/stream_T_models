@@ -63,6 +63,10 @@ print(paste(site,"df2.Rdata",sep="_"))
 ```
 
 
+Meteorological Variables
+1999-2020
+https://www.boisestate.edu/drycreek/dry-creek-data/lower-weather/#historical-data
+
 
 
 
