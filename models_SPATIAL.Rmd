@@ -8,6 +8,7 @@ output:
 ---
 
 ```{r}
+library("lubridate")
 library("dplyr")
 #install.packages('corrplot')
 library(corrplot)
@@ -58,11 +59,21 @@ daily_df_summer_BSG<-merge(daily_df_summer_BSG, site,by="SITE" )
 summary(daily_df_summer_BSG)
 
 daily_df_summer<-rbind(daily_df_summer_LG, daily_df_summer_BSG)
+daily_df_summer$doy<-yday(daily_df_summer$date)
 daily_df_summer
 ```
 
 ```{r}
-M <-cor(daily_df_summer[,c(3:14,18)])
+ggplot(daily_df_summer, aes(x= doy, y= max_StreamTemp, color= SITE)) + geom_point()
+ggplot(daily_df_summer, aes(x= doy, y=max_AirTemperature_C  , color= SITE)) + geom_point()
+ggplot(daily_df_summer, aes(x= doy, y=min_Discharge  , color= SITE)) + geom_point()
+ggplot(daily_df_summer[daily_df_summer$SITE=="DCEW_BogusS Gage",], aes(x= doy, y=min_Discharge  , color= SITE)) + geom_point()
+
+```
+
+
+```{r}
+M <-cor(daily_df_summer[,c(3:14,18,20)])
 corrplot(M, type="upper", order="hclust",
          col=brewer.pal(n=8, name="RdYlBu"))
 #stream T, Air T, DISCHARGE
@@ -79,16 +90,16 @@ hist(daily_df_summer$max_SolarRadiation)
 
 
 ```{r}
-summary(lm(daily_df_summer$max_StreamTemp~ daily_df_summer$min_Discharge + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation+  daily_df_summer$ELEV__M_) )
-summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation +  daily_df_summer$ELEV__M_) )
-summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +  daily_df_summer$ELEV__M_  ) )
+summary(lm(daily_df_summer$max_StreamTemp~ daily_df_summer$min_Discharge + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation+  daily_df_summer$ELEV__M_+daily_df_summer$doy) )
+summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation +  daily_df_summer$ELEV__M_+daily_df_summer$doy) )
+summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +  daily_df_summer$ELEV__M_+daily_df_summer$doy  ) )
 ```
 
 ```{r}
 # set seed for generating random data.
 set.seed(0)          
 # createDataPartition() function from the caret package to split the original dataset into a training and testing set and split data into training (80%) and testing set (20%)
-variables<-c("max_StreamTemp","min_Discharge","max_AirTemperature_C", "max_SolarRadiation", "ELEV__M_")
+variables<-c("max_StreamTemp","min_Discharge","max_AirTemperature_C", "max_SolarRadiation", "ELEV__M_", "doy")
 parts = createDataPartition(  daily_df_summer$max_StreamTemp , p = .8, list = F)
 train = daily_df_summer[parts, variables ]
 test =  daily_df_summer[-parts, variables  ]
@@ -116,10 +127,10 @@ ggplot(rinf, aes(rel.inf)) + geom_bar()
 ```
 
 ```{r}
-rinf$var<- factor(rinf$var, levels=c(  "max_AirTemperature_C" ,"min_Discharge"  ,      "max_SolarRadiation" ,"ELEV__M_"   ))
+rinf$var<- factor(rinf$var, levels=c(  "max_AirTemperature_C" ,"min_Discharge"  ,      "max_SolarRadiation" ,"ELEV__M_" , "doy"  ))
 ggplot( rinf, aes( var , rel.inf ))+  geom_col()+ 
   coord_flip()
-ggplot( rinf )+  geom_bar(  aes( x=var, y= rel.inf),  stat = "summary")+ scale_x_discrete(labels=  c( "max_AirTemperature_C" ,"min_Discharge"  ,      "max_SolarRadiation" , "ELEV__M_") )+ylab("Relative importance (%)") +xlab(" ")  + theme(text=element_text(size=21))
+ggplot( rinf )+  geom_bar(  aes( x=var, y= rel.inf),  stat = "summary")+ scale_x_discrete(labels=  c( "max_AirTemperature_C" ,"min_Discharge"  ,      "max_SolarRadiation" , "ELEV__M_", "doy") )+ylab("Relative importance (%)") +xlab(" ")  + theme(text=element_text(size=21))
 ```
 
 ```{r}
