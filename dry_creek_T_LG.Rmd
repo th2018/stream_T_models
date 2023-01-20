@@ -102,6 +102,50 @@ head(met_df)
 summary(met_df)
 ```
 
+```{r}
+met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")]  <- sapply( met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")] ,as.numeric)
+summary(met_df)
+```
+
+```{r}
+met_df2 <-met_df[!met_df$AirTemperature_C <= -6999 &   !met_df$SolarRadiation       <=-6999 & !is.na(met_df$DateTime) ,]
+summary(met_df2)
+save(met_df2,file=paste(site, "met_df2.Rdata", sep="_")      )
+```
+
+# daily
+```{r}
+
+
+df2$date<-as.Date(df2$DateTime)
+met_df2$date<-as.Date(met_df2$DateTime)
+daily<-merge(df2 ,met_df2 ,by="date")
+
+daily_df <- daily %>%                            
+group_by(date) %>%
+summarize(min_Discharge = min(Discharge) , median_Discharge = median( Discharge) ,   max_Discharge = max( Discharge),
+          min_StreamTemp = min(StreamTemp) , median_StreamTemp = median(StreamTemp) ,   max_StreamTemp = max(StreamTemp),
+          min_AirTemperature_C = min(AirTemperature_C) , median_AirTemperature_C = median(AirTemperature_C) ,   max_AirTemperature_C = max(AirTemperature_C),
+          min_SolarRadiation = min(SolarRadiation) , median_SolarRadiation = median(SolarRadiation) ,   max_SolarRadiation = max(SolarRadiation)
+          )
+
+daily_df<-daily_df[daily_df$min_Discharge>0,]
+
+daily_df_summer<-daily_df[    months( daily_df$date ) %in% c("June","July","August")   ,]
+summary(daily_df_summer)
+save(daily_df_summer, file= paste(site, "daily_df_summer.Rdata", sep="_")          )
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
