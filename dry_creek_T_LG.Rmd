@@ -62,10 +62,45 @@ save( df2  ,file=paste(site,"df2.Rdata",sep="_"))
 print(paste(site,"df2.Rdata",sep="_"))
 ```
 
-
 Meteorological Variables
 1999-2020
 https://www.boisestate.edu/drycreek/dry-creek-data/lower-weather/#historical-data
+```{r}
+yr=c(1999:2020)
+site= "LowerWeather"
+for (year in yr) {
+url=paste("https://icewater.boisestate.edu/boisefront-products/historical/dcew_lw/Weather/Hourly%20Summary%20Data/",site,"_HrlySummary_",year,".csv",sep="")
+destfile=paste(site,"_HrlySummary_",year,".csv",sep="")
+download.file(url, destfile)
+}
+```
+
+```{r}
+met_df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"),Precipitation_mm=0,         AirTemperature_C =0, SolarRadiation =0,NetRadiation =0,RelativeHumidity_percent=0,WindDirection_degree=0,WindSpeed =0, SnowDepth_cm    =0 )
+
+for (year in yr) {
+destfile=paste(site,"_HrlySummary_",year,".csv",sep="")
+r<-read.csv(destfile, header=F)
+colname_row<-as.numeric(row.names(r[r$V1=="DateTime",]))
+colname_row
+r2<-r[c(colname_row:dim(r)[1]),c(1:9)]
+colnames(r2)<-r2[1,]
+r2<-r2[-1,]
+head(r2)
+r2$DateTime<-as.POSIXct(r2$DateTime , format="%m/%d/%Y %H:%M")
+colnames(r2)<-c( "DateTime" ,"Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm" )
+
+air_summary<-summary((as.numeric(  r2$AirTemperature_C  ) ))
+# 
+# if (  air_summary[2] < -100         )
+# {print(year)}
+
+met_df<-rbind(r2,met_df)
+}
+
+head(met_df)
+summary(met_df)
+```
 
 
 
