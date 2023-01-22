@@ -199,3 +199,18 @@ QQ PLOT
 LOO PRESS stats
 
 svm
+
+```{r}
+svm_model <- svm( Stream_T ~  Drainage_area  +Air_T +Runoff , data = meanSummerT_df7[parts,], scale = FALSE #, gamma=1 
+                  )
+svm_model
+#predicted vals for all X
+predictYsvm <- predict(svm_model, meanSummerT_df7[-parts,])
+x=seq(1,30)
+plot( meanSummerT_df7[-parts,]$Stream_T, predictYsvm,xlim=c(4,26) ,ylim=c(4,26), xlab="Observed stream temperature (degC)", ylab="Predicted stream temperature (degC)")
+par(new=T)
+plot(x,x,type="l",xlim=c(4,26) ,ylim=c(4,26),xlab="",ylab="", main="SVM")
+mse( meanSummerT_df7[-parts,]$Stream_T, predictYsvm)
+R2( meanSummerT_df7[-parts,]$Stream_T, predictYsvm)
+```
+
