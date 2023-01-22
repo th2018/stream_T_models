@@ -1,0 +1,95 @@
+---
+title: "Dry_Creek_T"
+author: "Tao Huang"
+date:  "`r  Sys.time() `"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This .RMD downloads stream T and Q from the con2main; Weather Station Data from 
+.
+
+# The 'tidyverse' is a set of packages.
+```{r, hide=T, results='hide'}
+# install.packages("tidyverse")
+library("tidyverse")
+library("lubridate")
+library("dplyr")
+getwd()
+```
+
+https://www.boisestate.edu/drycreek/dry-creek-data/con2main/
+2004-2020
+
+# Download data for multiple years (Bogus South Gage)
+```{r , hide=T, results='hide' }
+yr=c(2004:2012)
+site="C2M"
+for (year in yr) {
+url=paste("https://icewater.boisestate.edu/boisefront-products/historical/dcew_c2m/StreamHourlyData/",site,"_StreamHrlySummary_",year,".csv",sep="")
+destfile=paste(site,"_StreamHrlySummary_",year,".csv",sep="")
+download.file(url, destfile)
+}
+```
+
+```{r}
+df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"), Discharge=0, StreamTemp=0, StreamEC=as.factor(0))
+
+for (year in yr) { 
+destfile=paste(site,"_StreamHrlySummary_",year,".csv",sep="")
+f<-read.csv(destfile)
+f2<-f[c(18:dim(f)[1]),c(1:4)]
+f2[1,]
+colnames(f2 )<-unlist(f2[1,])
+f2<-f2[-1,]
+f2$DateTime<-as.POSIXct(f2$DateTime, format="%m/%d/%Y %H:%M")
+f2$DateTime
+f2$`Discharge-L/s`<-as.numeric(as.character(f2$`Discharge-L/s`))
+f2$`StreamTemp-C` <-as.numeric(as.character(f2$`StreamTemp-C`))
+colnames(f2)<-c("DateTime" ,  "Discharge" , "StreamTemp", "StreamEC")
+
+#if ( min(as.numeric(format( f2$DateTime,"%Y")), na.rm=T) <2000         )
+#{print(year)}
+
+df<-rbind(f2,df)
+}
+
+head(df)
+df2<-df[!df$StreamTemp<=-6999 & !df$Discharge <=-6999 & !is.na(df$DateTime) ,]
+summary(df2)
+```
+
+```{r}
+df3<-df2
+#[df2$DateTime>=as.Date("2000-01-01",format="%Y-%m-%d"),]
+save( df3  ,file=paste(site,"df3.Rdata",sep="_"))
+```
+
+Meteorological Variables
+```{r}
+load("met_df2.Rdata")
+```
+
+# daily
+```{r}
+df3->df2
+df2$date<-as.Date(df2$DateTime)
+met_df2$date<-as.Date(met_df2$DateTime)
+daily<-merge(df2 ,met_df2 ,by="date")
+
+daily_df <- daily %>%                            
+group_by(date) %>%
+summarize(min_Discharge = min(Discharge) , median_Discharge = median( Discharge) ,   max_Discharge = max( Discharge),
+          min_StreamTemp = min(StreamTemp) , median_StreamTemp = median(StreamTemp) ,   max_StreamTemp = max(StreamTemp),
+          min_AirTemperature_C = min(AirTemperature_C) , median_AirTemperature_C = median(AirTemperature_C) ,   max_AirTemperature_C = max(AirTemperature_C),
+          min_SolarRadiation = min(SolarRadiation) , median_SolarRadiation = median(SolarRadiation) ,   max_SolarRadiation = max(SolarRadiation)
+          )
+
+daily_df<-daily_df[daily_df$min_Discharge>0,]
+
+daily_df_summer<-daily_df[    months( daily_df$date ) %in% c("June","July","August")   ,]
+summary(daily_df_summer)
+save(daily_df_summer, file= paste(site, "daily_df_summer.Rdata", sep="_")          )
+```
+
