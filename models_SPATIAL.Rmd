@@ -7,7 +7,7 @@ output:
   html_document: default
 ---
 
-```{r}
+```{r include=FALSE}
 library("lubridate")
 library("dplyr")
 #install.packages('corrplot')
@@ -41,7 +41,7 @@ library("rfUtilities")
 ```
 
 # Load data and add site
-```{r}
+```{r, results='hide'}
 site<-read.dbf("DCEWsites2013.dbf")
 site<-site[,c("SITE" ,"SITETYPE" ,"DECLAT" ,"DECLONG" ,"ELEV__M_" ,"VERTDATUM")]
 summary(site)
@@ -68,9 +68,7 @@ ggplot(daily_df_summer, aes(x= doy, y= max_StreamTemp, color= SITE)) + geom_poin
 ggplot(daily_df_summer, aes(x= doy, y=max_AirTemperature_C  , color= SITE)) + geom_point()
 ggplot(daily_df_summer, aes(x= doy, y=min_Discharge  , color= SITE)) + geom_point()
 ggplot(daily_df_summer[daily_df_summer$SITE=="DCEW_BogusS Gage",], aes(x= doy, y=min_Discharge  , color= SITE)) + geom_point()
-
 ```
-
 
 ```{r}
 M <-cor(daily_df_summer[,c(3:14,18,20)])
@@ -89,12 +87,14 @@ hist(daily_df_summer$max_SolarRadiation)
 ```
 
 
-```{r}
-summary(lm(daily_df_summer$max_StreamTemp~ daily_df_summer$min_Discharge + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation+  daily_df_summer$ELEV__M_+daily_df_summer$doy) )
-summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation +  daily_df_summer$ELEV__M_+daily_df_summer$doy) )
-summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +  daily_df_summer$ELEV__M_+daily_df_summer$doy  ) )
-```
 
+<!-- ```{r} -->
+<!-- summary(lm(daily_df_summer$max_StreamTemp~ daily_df_summer$min_Discharge + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation+  daily_df_summer$ELEV__M_+daily_df_summer$doy) ) -->
+<!-- summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +daily_df_summer$max_SolarRadiation +  daily_df_summer$ELEV__M_+daily_df_summer$doy) ) -->
+<!-- summary(lm(daily_df_summer$max_StreamTemp~ log(daily_df_summer$min_Discharge) + daily_df_summer$max_AirTemperature_C +  daily_df_summer$ELEV__M_+daily_df_summer$doy  ) ) -->
+<!-- ``` -->
+
+# Model 2: GBM
 ```{r}
 # set seed for generating random data.
 set.seed(0)          
@@ -107,6 +107,22 @@ test =  daily_df_summer[-parts, variables  ]
 test_x = test[, -1] 
 test_y = test[, 1] 
 ```
+
+# Model 1: lm
+```{r}
+lm<-lm( max_StreamTemp ~min_Discharge+max_AirTemperature_C+max_SolarRadiation+ELEV__M_+doy , data =  train  )
+summary(lm)
+mean(lm$residuals^2)
+predict<-predict(lm, test_x)
+summary(test_y)
+xmin=5
+xmax=30
+x=seq(xmin-5,xmax+5)
+plot( test_y ,predict,xlim=c(xmin,xmax) ,ylim=c(xmin,xmax), xlab="Observed stream temperature (degC)", ylab="Predicted stream temperature (degC)")
+par(new=T)
+plot(x,x,type="l",xlim=c(xmin,xmax) ,ylim=c(xmin,xmax),xlab="",ylab="", main="LM")
+```
+
 
 ```{r}
 model_gbm = gbm(train$max_StreamTemp      ~.,
@@ -171,5 +187,15 @@ model_gbm %>%
   partial(pred.var =  "min_Discharge"   , n.trees = model_gbm$n.trees, grid.resolution = 100) %>%
   autoplot(rug = TRUE, train = train)+theme(axis.text=element_text(size=21),
         axis.title=element_text(size=24))
-
 ```
+
+
+plsr
+
+gvlma
+
+QQ PLOT
+
+LOO PRESS stats
+
+svm
