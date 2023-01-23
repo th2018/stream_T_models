@@ -21,6 +21,31 @@ getwd()
 
 https://www.boisestate.edu/drycreek/dry-creek-data/con2main/
 2004-2020
+```{r}
+df<-read.csv("c2m_2004_2020.csv")
+df_2004<-df[0:88770,]
+df_2004$DateTime<-as.POSIXct( df_2004$DateTime, format="%m/%d/%y %H:%M")
+df_2013<-df[88771:174370,]
+df_2013$DateTime<-as.POSIXct( df_2013$DateTime, format="%m/%d/%Y %H:%M")
+df2<-rbind(df_2004,df_2013)
+df2<-df2[!is.na(df2$DateTime) & !df2$Discharge<=-6999 
+         #& !df2$StreamTemp<=-6999
+         ,]
+summary(df2)
+
+#where is stream T data after 2013?
+
+```
+
+
+
+
+
+
+
+
+
+
 
 # Download data for multiple years (Bogus South Gage)
 ```{r , hide=T, results='hide' }
