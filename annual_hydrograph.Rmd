@@ -1,0 +1,79 @@
+---
+title: "annual_hydrograph"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library("lubridate")
+library("dplyr")
+#install.packages('corrplot')
+library(corrplot)
+library(RColorBrewer)
+# install.packages("gbm")
+library("gbm")
+# install.packages("caret")
+library("caret")
+#install.packages("pdp")
+library("pdp")          # model visualization
+library("ggplot2")      # model visualization
+#install.packages("lime")
+library("lime")         # model visualization
+library("pROC")
+#install.packages("e1071", repos="http://R-Forge.R-project.org")
+library("e1071")
+```
+
+Bogus South Gage
+```{r}
+load("BSG_df3.Rdata")
+df3$year<-year(df3$DateTime)
+df3$doy<-yday( df3$DateTime)
+df3
+```
+
+```{r}
+plot(df3$doy ,log(df3$Discharge))
+```
+
+```{r}
+
+
+```
+
+# min_Q has to happen in summer!!
+```{r}
+df4 = df3 %>% group_by(year)  %>% 
+  mutate(max_Q = max(Discharge),min_Q = min(Discharge)
+                              )%>% 
+  ungroup()
+
+df4
+df4_2017<-df4[df4$year==2017,]
+plot(df4_2017$DateTime,df4_2017$Discharge)
+df4<-df4[df4$Discharge==df4$max_Q | df4$Discharge==df4$min_Q   ,]
+
+```
+
+```{r}
+plot(log(df4$max_Q),log(df4$min_Q))
+
+```
+
+```{r}
+df5 = df4 %>% group_by(year)  %>% 
+  mutate(min_summer_doy = max( doy ),max_spring_doy = min(doy)
+                              )
+df5
+```
+
+```{r}
+plot(df5$max_spring_doy,df5$min_summer_doy)
+```
+#2017
+```{r}
+df4[df4$year==2017,]
+plot(df3[df3$year==2017,]$doy ,log(df3[df3$year==2017,]$Discharge))
+```
+
