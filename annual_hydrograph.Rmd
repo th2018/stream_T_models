@@ -37,27 +37,25 @@ df3
 plot(df3$doy ,log(df3$Discharge))
 ```
 
+
 ```{r}
-
-
-```
-
-# min_Q has to happen in summer!!
-```{r}
-df4 = df3 %>% group_by(year)  %>% 
+df4 = df3[df3$doy>90 & df3$doy<270,] %>% group_by(year)  %>% 
   mutate(max_Q = max(Discharge),min_Q = min(Discharge)
                               )%>% 
   ungroup()
 
-df4
-df4_2017<-df4[df4$year==2017,]
-plot(df4_2017$DateTime,df4_2017$Discharge)
 df4<-df4[df4$Discharge==df4$max_Q | df4$Discharge==df4$min_Q   ,]
 
+
+
+table(as.character(df4$year))
+
+#df4<-df4[df4$year %in% c(2006,2007,2010,2020),]
+df4[,]
 ```
 
 ```{r}
-plot(log(df4$max_Q),log(df4$min_Q))
+plot(log(df4$max_Q),log(df4$min_Q),xlab = "log(Max spring streamflow)", ylab = "log(Min summer streamflow)", main="Bogus South Gage")
 
 ```
 
