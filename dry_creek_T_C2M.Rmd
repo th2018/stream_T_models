@@ -11,12 +11,27 @@ This .RMD downloads stream T and Q from the con2main; Weather Station Data from
 .
 
 # The 'tidyverse' is a set of packages.
-```{r, hide=T, results='hide'}
+```{r, hide=T, results='hide', include=FALSE}
 # install.packages("tidyverse")
 library("tidyverse")
 library("lubridate")
 library("dplyr")
 getwd()
+```
+
+```{r}
+df<-read.csv("c2m_2004_2020.csv")
+range=c(115051:400000)
+df4<-df[ range,]
+df4<-df4[!df4$StreamT.C<=-6999 & !df4$Discharge<=-6999,]
+df4$DateTime<-as.POSIXct( df4$DateTime, format="%m/%d/%Y %H:%M")
+plot(df4$DateTime,df4$StreamT.C, ylab = "Stream T", xlab = "", main="Confluence 2 Main")
+
+plot(df4$DateTime, log(df4$Discharge) , ylab = "log(Discharge)", xlab = "" , main="Confluence 2 Main", col="dodgerblue")
+
+#plot(df4$DateTime,df4$StreamTemp )
+
+#df[11505,]
 ```
 
 https://www.boisestate.edu/drycreek/dry-creek-data/con2main/
