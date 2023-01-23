@@ -38,6 +38,8 @@ library("ModelMetrics")
 library("foreign")
 #install.packages("rfUtilities")
 library("rfUtilities")
+# install.packages("pls")
+library(pls)
 ```
 
 # Load data and add site
@@ -60,18 +62,21 @@ summary(daily_df_summer_BSG)
 
 daily_df_summer<-rbind(daily_df_summer_LG, daily_df_summer_BSG)
 daily_df_summer$doy<-yday(daily_df_summer$date)
-daily_df_summer
+daily_df_summer$log_median_Q<-log(daily_df_summer$median_Discharge)
+
 ```
 
 ```{r}
 ggplot(daily_df_summer, aes(x= doy, y= max_StreamTemp, color= SITE)) + geom_point()
 ggplot(daily_df_summer, aes(x= doy, y=max_AirTemperature_C  , color= SITE)) + geom_point()
 ggplot(daily_df_summer, aes(x= doy, y=min_Discharge  , color= SITE)) + geom_point()
+ggplot(daily_df_summer, aes(x= doy, y=max_Discharge  , color= SITE)) + geom_point()
+ggplot(daily_df_summer, aes(x= doy, y=log_median_Q  , color= SITE)) + geom_point()
 ggplot(daily_df_summer[daily_df_summer$SITE=="DCEW_BogusS Gage",], aes(x= doy, y=min_Discharge  , color= SITE)) + geom_point()
 ```
 
 ```{r}
-M <-cor(daily_df_summer[,c(3:14,18,20)])
+M <-cor(daily_df_summer[,c( 4, 8, 11,14,18,   20, 21)])
 corrplot(M, type="upper", order="hclust",
          col=brewer.pal(n=8, name="RdYlBu"))
 #stream T, Air T, DISCHARGE
@@ -99,7 +104,9 @@ hist(daily_df_summer$max_SolarRadiation)
 # set seed for generating random data.
 set.seed(0)          
 # createDataPartition() function from the caret package to split the original dataset into a training and testing set and split data into training (80%) and testing set (20%)
-variables<-c("max_StreamTemp","min_Discharge","max_AirTemperature_C", "max_SolarRadiation", "ELEV__M_", "doy")
+variables<-c("max_StreamTemp","log_median_Q"
+             #,"min_Discharge"
+             ,"max_AirTemperature_C", "max_SolarRadiation", "ELEV__M_", "doy")
 parts = createDataPartition(  daily_df_summer$max_StreamTemp , p = .8, list = F)
 train = daily_df_summer[parts, variables ]
 test =  daily_df_summer[-parts, variables  ]
@@ -110,9 +117,11 @@ test_y = test[, 1]
 
 # Model 1: lm
 ```{r}
-lm<-lm( max_StreamTemp ~min_Discharge+max_AirTemperature_C+max_SolarRadiation+ELEV__M_+doy , data =  train  )
+lm<-lm( max_StreamTemp ~log_median_Q #+min_Discharge
+        +max_AirTemperature_C+max_SolarRadiation+ELEV__M_+doy , data =  train  )
 summary(lm)
-mean(lm$residuals^2)
+RMSE = sqrt(mean(lm$residuals^2))
+cat('The root mean square error of the test data is ', round(RMSE,3),'\n')
 predict<-predict(lm, test_x)
 summary(test_y)
 xmin=5
@@ -122,7 +131,6 @@ plot( test_y ,predict,xlim=c(xmin,xmax) ,ylim=c(xmin,xmax), xlab="Observed strea
 par(new=T)
 plot(x,x,type="l",xlim=c(xmin,xmax) ,ylim=c(xmin,xmax),xlab="",ylab="", main="LM")
 ```
-
 
 ```{r}
 model_gbm = gbm(train$max_StreamTemp      ~.,
@@ -143,10 +151,14 @@ ggplot(rinf, aes(rel.inf)) + geom_bar()
 ```
 
 ```{r}
-rinf$var<- factor(rinf$var, levels=c(  "max_AirTemperature_C" ,"min_Discharge"  ,      "max_SolarRadiation" ,"ELEV__M_" , "doy"  ))
+rinf$var<- factor(rinf$var, levels=c(  "max_AirTemperature_C" ,"log_median_Q"
+             #,"min_Discharge"
+             ,      "max_SolarRadiation" ,"ELEV__M_" , "doy"  ))
 ggplot( rinf, aes( var , rel.inf ))+  geom_col()+ 
   coord_flip()
-ggplot( rinf )+  geom_bar(  aes( x=var, y= rel.inf),  stat = "summary")+ scale_x_discrete(labels=  c( "max_AirTemperature_C" ,"min_Discharge"  ,      "max_SolarRadiation" , "ELEV__M_", "doy") )+ylab("Relative importance (%)") +xlab(" ")  + theme(text=element_text(size=21))
+ggplot( rinf )+  geom_bar(  aes( x=var, y= rel.inf),  stat = "summary")+ scale_x_discrete(labels=  c( "max_AirTemperature_C" ,"log_median_Q"
+             #,"min_Discharge"
+             ,      "max_SolarRadiation" , "ELEV__M_", "doy") )+ylab("Relative importance (%)") +xlab(" ")  + theme(text=element_text(size=11))
 ```
 
 ```{r}
@@ -184,13 +196,35 @@ model_gbm %>%
 #,"min_Discharge"
 
 model_gbm %>%
-  partial(pred.var =  "min_Discharge"   , n.trees = model_gbm$n.trees, grid.resolution = 100) %>%
+  partial(pred.var =  "log_median_Q"
+             #,"min_Discharge"
+               , n.trees = model_gbm$n.trees, grid.resolution = 100) %>%
   autoplot(rug = TRUE, train = train)+theme(axis.text=element_text(size=21),
         axis.title=element_text(size=24))
 ```
 
-
 plsr
+```{r}
+plsr <- plsr( max_StreamTemp ~log_median_Q #+min_Discharge
+        +max_AirTemperature_C+max_SolarRadiation+ELEV__M_+doy , data =  train, scale=TRUE, validation="CV")
+
+summary(plsr)
+
+validationplot(plsr)
+validationplot(plsr, val.type="MSEP")
+validationplot(plsr, val.type="R2")
+
+pcr_pred <- predict(plsr, test_x, ncomp=2)
+
+#calculate RMSE
+sqrt(mean((pcr_pred - test_y)^2))
+
+```
+
+
+
+
+
 
 gvlma
 
