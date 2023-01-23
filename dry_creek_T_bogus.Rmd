@@ -11,11 +11,38 @@ This .RMD downloads stream T and Q from the Bogus South Gage; Weather Station Da
 
 # The 'tidyverse' is a set of packages.
 ```{r, hide=T, results='hide'}
-# install.packages("tidyverse")
-library("tidyverse")
 library("lubridate")
 library("dplyr")
-getwd()
+#install.packages('corrplot')
+library(corrplot)
+library(RColorBrewer)
+# install.packages("gbm")
+library("gbm")
+# install.packages("caret")
+library("caret")
+#install.packages("pdp")
+library("pdp")          # model visualization
+library("ggplot2")      # model visualization
+#install.packages("lime")
+library("lime")         # model visualization
+library("pROC")
+#install.packages("e1071", repos="http://R-Forge.R-project.org")
+library("e1071")
+library( "MASS" )    #    used to generate correlated variables
+library("sp")
+# install.packages("Hmisc")
+library("Hmisc")    #   used for graphing se bars
+#install.packages("randomForest")
+require("randomForest")
+#install.packages("e1071")
+library(e1071)
+library(caret)
+library("ModelMetrics")
+library("foreign")
+#install.packages("rfUtilities")
+library("rfUtilities")
+# install.packages("pls")
+library(pls)
 ```
 
 https://www.boisestate.edu/drycreek/dry-creek-data/bogus-south/#historical-data
@@ -149,6 +176,118 @@ daily_df_summer<-daily_df[    months( daily_df$date ) %in% c("June","July","Augu
 summary(daily_df_summer)
 save(daily_df_summer, file="daily_df_summer.Rdata")
 ```
+
+```{r}
+load("daily_df_summer.Rdata")
+daily_df_summer$doy<- yday(daily_df_summer$date)
+daily_df_summer$log_median_Q<-log(daily_df_summer$median_Discharge)
+```
+
+```{r}
+M <-cor(daily_df_summer[,c( 3,7 )])
+corrplot(M
+         #, type="upper", order="hclust",
+         #col=brewer.pal(n=8, name="RdYlBu")
+         )
+```
+
+
+# Model 2: GBM
+```{r}
+# set seed for generating random data.
+set.seed(0)          
+# createDataPartition() function from the caret package to split the original dataset into a training and testing set and split data into training (80%) and testing set (20%)
+variables<-c("max_StreamTemp","log_median_Q"
+             #,"min_Discharge"
+             ,"max_AirTemperature_C", "max_SolarRadiation",   "doy")
+parts = createDataPartition(  daily_df_summer$max_StreamTemp , p = .8, list = F)
+train = daily_df_summer[parts, variables ]
+test =  daily_df_summer[-parts, variables  ]
+# feature and target array
+test_x = test[, -1] 
+test_y = test[, 1] 
+```
+
+
+```{r}
+model_gbm = gbm(train$max_StreamTemp      ~.,
+                data = train,
+                distribution = "gaussian",
+                cv.folds = 10,
+                shrinkage = .01,
+                n.minobsinnode = 10,
+                n.trees = 800)
+ 
+# model performance
+perf_gbm1 = gbm.perf( model_gbm, method = "cv")
+print(model_gbm)
+summary(model_gbm)
+rinf<-summary(model_gbm)
+barplot( rinf$rel.inf , horiz = TRUE, las = 1)
+ggplot(rinf, aes(rel.inf)) + geom_bar()
+```
+
+
+```{r}
+rinf$var<- factor(rinf$var, levels=c(  "max_AirTemperature_C" ,"log_median_Q"
+             #,"min_Discharge"
+             ,      "max_SolarRadiation" ,
+             "doy"  ))
+ggplot( rinf, aes( var , rel.inf ))+  geom_col()+ 
+  coord_flip()
+ggplot( rinf )+  geom_bar(  aes( x=var, y= rel.inf),  stat = "summary")+ scale_x_discrete(labels=  c( "max_AirTemperature_C" ,"log_median_Q"
+             #,"min_Discharge"
+             ,      "max_SolarRadiation" , 
+             "doy") )+ylab("Relative importance (%)") +xlab(" ")  + theme(text=element_text(size=11))
+```
+
+
+```{r}
+#test_y <-test_y$max_StreamTemp
+pred_y = predict.gbm(model_gbm, test_x)
+residuals =  test_y   - pred_y
+summary(test_y )
+xlim=c(5,20)
+RMSE = sqrt(mean(residuals^2))
+cat('The root mean square error of the test data is ', round(RMSE,3),'\n')
+y_test_mean = mean( test_y  )
+# Calculate total sum of squares
+tss =  sum(( test_y   - y_test_mean)^2 )
+# Calculate residual sum of squares
+rss =  sum(residuals^2)
+# Calculate R-squared
+rsq  =  1 - (rss/tss)
+cat('The R-square of the test data is ', round(rsq,3), '\n')
+# visualize the model, actual and predicted data
+x_ax = 1:length(pred_y)
+plot(x_ax, test_y  , col="blue", pch=20, cex=.9)
+lines(x_ax, pred_y, col="red", pch=20, cex=.9) 
+plot(  test_y , pred_y,xlim= xlim ,ylim= xlim, xlab="Observed stream temperature (degC)", ylab="Predicted stream temperature (degC)", main="GBM")
+par(new=T)
+x=seq(1,30)
+plot(x,x,type="l",xlim= xlim ,ylim= xlim,xlab="",ylab="")
+```
+
+
+```{r}
+model_gbm %>%
+  partial(pred.var =  "max_AirTemperature_C"   , n.trees = model_gbm$n.trees, grid.resolution = 100) %>%
+  autoplot(rug = TRUE, train = train)+theme(axis.text=element_text(size=21),
+        axis.title=element_text(size=24))
+
+#,"min_Discharge"
+
+model_gbm %>%
+  partial(pred.var =  "log_median_Q"
+             #,"min_Discharge"
+               , n.trees = model_gbm$n.trees, grid.resolution = 100) %>%
+  autoplot(rug = TRUE, train = train)+theme(axis.text=element_text(size=21),
+        axis.title=element_text(size=24))
+```
+
+
+
+
 
 
 
