@@ -91,13 +91,13 @@ summary(df2)
 
 ```{r}
 df3<-df2[df2$DateTime>=as.Date("2000-01-01",format="%Y-%m-%d"),]
-save( df3  ,file=paste(site,"df3.Rdata",sep="_"))
+#save( df3  ,file=paste(site,"df3.Rdata",sep="_"))
 ```
 
 
 ```{r}
-#site="BSG"
-#load( paste(site,"df3.Rdata",sep="_"))
+site="BSG"
+load( paste(site,"df3.Rdata",sep="_"))
 ```
 
 Meteorological Variables
@@ -113,7 +113,6 @@ destfile=paste(site,"_HrlySummary_",year,".csv",sep="")
 download.file(url, destfile)
 }
 ```
-
 
 ```{r}
 met_df<-data.frame(DateTime=as.POSIXct("1000-01-01 00:00:00"),Precipitation_mm=0,         AirTemperature_C =0, SolarRadiation =0,NetRadiation =0,RelativeHumidity_percent=0,WindDirection_degree=0,WindSpeed =0, SnowDepth_cm    =0 )
@@ -142,7 +141,6 @@ met_df<-rbind(r2,met_df)
 head(met_df)
 summary(met_df)
 ```
-
 
 ```{r}
 met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")]  <- sapply( met_df[,c( "Precipitation_mm" , "AirTemperature_C"  , "SolarRadiation" ,"NetRadiation" ,"RelativeHumidity_percent" ,"WindDirection_degree" ,"WindSpeed" , "SnowDepth_cm")] ,as.numeric)

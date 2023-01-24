@@ -1,0 +1,136 @@
+---
+title: "annual_hydrograph"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library("lubridate")
+library("dplyr")
+#install.packages('corrplot')
+library(corrplot)
+library(RColorBrewer)
+# install.packages("gbm")
+library("gbm")
+# install.packages("caret")
+library("caret")
+#install.packages("pdp")
+library("pdp")          # model visualization
+library("ggplot2")      # model visualization
+#install.packages("lime")
+library("lime")         # model visualization
+library("pROC")
+#install.packages("e1071", repos="http://R-Forge.R-project.org")
+library("e1071")
+```
+
+Bogus South Gage
+```{r}
+load("BSG_df3.Rdata")
+df3$year<-year(df3$DateTime)
+df3$doy<-yday( df3$DateTime)
+df3
+```
+
+```{r}
+plot(df3$doy ,log(df3$Discharge))
+plot(df3[df3$year==2015,]$doy ,log(df3[df3$year==2015,]$Discharge))
+```
+
+# Spring max
+```{r}
+df4 = df3[df3$doy>=60 & df3$doy<150,] %>% group_by(year)  %>% 
+  mutate(max_Q = max(Discharge) )%>% 
+  ungroup()
+
+df4<-df4[  df4$Discharge==df4$max_Q   ,]
+
+df4$max_Q_doy<-df4$doy
+
+df4<-df4 %>% group_by(year)  %>% 
+  mutate( max_Q_doy = min(doy)  )
+#%>%  ungroup()
+
+summary(df4[,])
+
+plot(df4$doy ,log(df4$max_Q) )
+
+```
+
+# Summer min
+```{r}
+df4_1 = df3[df3$doy>=150 & df3$doy<240,] %>% group_by(year)  %>% 
+  mutate( min_Q = min(Discharge)  )%>% 
+  ungroup()
+
+df4_1<-df4_1[df4_1$Discharge==df4_1$min_Q  ,]
+
+df4_1<-df4_1 %>% group_by(year)  %>% 
+  mutate( min_Q_doy = min(doy)  )%>% 
+  ungroup()
+
+df4_1[,]
+
+plot(df4_1$min_Q_doy ,log(df4_1$min_Q) )
+
+```
+
+```{r}
+df4<-unique(df4[,c("max_Q", "StreamTemp", "year", "max_Q_doy")])
+
+
+df4_1<-unique(df4_1[,c("min_Q", "StreamTemp", "year", "min_Q_doy")])
+colnames(df4_1)<-c("min_Q", "Summer_StreamTemp", "year", "min_Q_doy")
+```
+
+```{r}
+df4_2<-merge(df4,df4_1,by.x="year",by.y="year")
+df4_3<-df4_2 %>% group_by(year)  %>% 
+  mutate( max_Summer_StreamTemp = min(Summer_StreamTemp)  )%>% 
+  ungroup()
+df4_3<-unique(df4_3[,c("year","max_Q","StreamTemp","max_Q_doy","min_Q", "min_Q_doy",             "max_Summer_StreamTemp")])
+
+plot( log(df4_3$min_Q ), df4_3$max_Summer_StreamTemp, xlab="log(min summer streamflow)"
+     , ylab="Max Summer StreamTemp", main="Bogus South Gage"
+     ) 
+
+plot(log(df4_3$max_Q), df4_3$max_Summer_StreamTemp, xlab="log(max spring streamflow)"
+     , ylab="Max Summer StreamTemp", main="Bogus South Gage"
+     ) 
+plot(log(df4_3$max_Q),log(df4_3$min_Q )          , xlab="log(max spring streamflow)"
+     , ylab="log(min summer streamflow)", main="Bogus South Gage")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+plot(log(df4$max_Q),log(df4$min_Q),xlab = "log(Max spring streamflow)", ylab = "log(Min summer streamflow)", main="Bogus South Gage")
+```
+
+```{r}
+df5 = df4 %>% group_by(year)  %>% 
+  mutate(min_summer_doy = max( doy ),max_spring_doy = min(doy)
+                              )
+df5
+```
+
+```{r}
+plot(df5$max_spring_doy,df5$min_summer_doy)
+```
+#2017
+```{r}
+df4[df4$year==2017,]
+plot(df3[df3$year==2017,]$doy ,log(df3[df3$year==2017,]$Discharge))
+```
+
